@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Lab 02 Exercise 01 Triangles</title>
+    </head>
+    <body>
+        <script type="text/javascript">
+        "use strict"; //doesn't allow for multiple vars of same name
+        let message = "*"
+        //console.log("What size would you like your triangle to be?")
+        //const size = prompt()
+        function triangles(size){
+            for (let i = 0; i < size; i++) {
+                console.log(message)
+                message = message.concat("*")
+            }
+            for (let i = size - 1; i > 0; --i) {
+                message = message.substring(0, i)
+                console.log(message)
+            }
+            console.log("")
+        }
+        
+        let triangle1 = triangles(2)
+        let triangle2 = triangles(5)
+        //let triangle3 = triangles(size)
+        </script>
+    </body>
+</html>

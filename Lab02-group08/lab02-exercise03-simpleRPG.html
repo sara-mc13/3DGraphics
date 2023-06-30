@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <meta name="theme-color" content="#000000" />
+    <!--
+      manifest.json provides metadata used when your web app is installed on a
+      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
+    -->
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <link href="https://fonts.googleapis.com/css?family=Ubuntu:300,300i,400,500,700" rel="stylesheet">
+
+    <!--
+      Notice the use of %PUBLIC_URL% in the tags above.
+      It will be replaced with the URL of the `public` folder during the build.
+      Only files inside the `public` folder can be referenced from the HTML.
+
+      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
+      work correctly both with client-side routing and a non-root public URL.
+      Learn how to configure a non-root public URL by running `npm run build`.
+    -->
+    <title>React App</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <!--
+      This HTML file is a template.
+      If you open it directly in the browser, you will see an empty page.
+
+      You can add webfonts, meta tags, or analytics to this file.
+      The build step will place the bundled scripts into the <body> tag.
+
+      To begin the development, run `npm start` or `yarn start`.
+      To create a production bundle, use `npm run build` or `yarn build`.
+    -->
+  </body>
+  <script type="text/javascript" >
+    "use strict";
+    const size = 10;
+    var xpos = 4;
+    var ypos = 5;
+    var count = 0;
+    console.log('Try to collect all the coins!')
+
+    let coinx = Math.floor((Math.random() * 10) + 1);
+    let coiny = Math.floor((Math.random() * 10) + 1);
+
+
+    function createWorld(size, x, y) {
+      for (let i = 0; i < size; i++) {
+      let text = "";
+        for (let j = 0; j < size; j++) {
+          if (i === x - 1 && j === y - 1) {
+            if (i === coinx - 1 && j === coiny - 1) {
+              count++;
+              coinx = Math.floor((Math.random() * 10) + 1);
+              coiny = Math.floor((Math.random() * 10) + 1);
+            } 
+            text += "8";
+          } else if (i === coinx - 1 && j === coiny - 1) {
+            text += "0";
+          } else  {
+            text += ",";
+          }
+        }
+        console.log(text);
+      }
+      console.log('You have ' + count + ' coins.');
+    }
+    createWorld(size, xpos, ypos);
+
+    function keyDownFunction(event){
+      console.clear();
+      if (event.key === "ArrowDown") { 
+        xpos += 1;
+        if (xpos > size) {
+          xpos = size;
+          console.log('You cannot go further down!');
+        }
+        createWorld(size, xpos, ypos);
+      }
+      if (event.key === "ArrowUp") { 
+        xpos -= 1;
+        if (xpos < 1) {
+          xpos = 1;
+          console.log('You cannot go further up!');
+        }
+        createWorld(size, xpos, ypos);
+      } 
+      if (event.key === "ArrowLeft") { 
+        ypos -= 1;
+        if (ypos < 1) {
+          ypos = 1;
+          console.log('You cannot go further left!');
+        }
+        createWorld(size, xpos, ypos);
+      }
+      if (event.key === "ArrowRight") { 
+        ypos += 1;
+        if (ypos > size) {
+          ypos = size;
+          console.log('You cannot go further right!');
+        }
+        createWorld(size, xpos, ypos);
+      }
+    }
+    window.addEventListener("keydown", keyDownFunction);
+  </script>
+</html>

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Lab 02 Exercise 01 Rectangles</title>
+    </head>
+    <body>
+        <script type="text/javascript">
+        "use strict"; //doesn't allow for multiple vars of same name
+        let border = "+"
+        let inside = "-"
+        let message = ""
+        //console.log("What size would you like your rectangle to be?")
+        //const size = prompt()
+        function rectangles(base, height){
+            for (let i = 0; i < height; i++) {
+                if (i === 0) {
+                    for (let j = 0; j < base; j++) {
+                        message = message.concat(border)
+                    }
+                    console.log(message)
+                    message = ""
+                } else if (i === height - 1) {
+                    for (let j = 0; j < base; j++) {
+                        message = message.concat(border)
+                    }
+                    console.log(message)
+                    message = ""
+                } else {
+                    message = "+"
+                    for (let j = 0; j < base - 2; j++) {
+                        message = message.concat(inside)
+                    }
+                    message = message.concat("+")
+                    console.log(message)
+                    message = ""
+                }
+            }
+            console.log("")
+        }
+        
+        //let triangle1 = triangles(3)
+        //let triangle2 = triangles(6)
+        let rectangle1 = rectangles(2, 2)
+        let rectangle2 = rectangles(5, 5)
+        let rectangle3 = rectangles(10, 4)
+        </script>
+    </body>
+</html>
