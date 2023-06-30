@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Final project</title>
+</head>
+<body>
+	<canvas width="500" height="500" id="webgl-canvas"></canvas>
+
+    <script src="../common/webgl-debug.js"></script>
+    <!--<script src="../common/webgl-lint.js"></script>-->
+    <script src="../common/math.js"></script>
+    <script src="../common/gl-utils.js"></script>
+    <script src="../common/input.js"></script>
+    <script src="../common/renderloop.js"></script>
+    <script src="../common/camera.js"></script>
+    <script src="../common/grid.js"></script>
+    <script src="../common/dat.gui.min.js"></script>
+    <script src="../common/stats.min.js"></script>
+    <script src="../common/carPhys.js"></script>
+    <script src="howler.js"></script>
+
+    <script src="renderer.js"></script>
+    <script src="lightRenderer.js"></script>
+    <script src="modeltransform.js"></script>
+    <script src="primitives.js"></script>
+    <script src="../common/objparser.js"></script>
+
+    <button id="startbutton" width="300" height="300" onclick="load()" style="
+        background-color: #111111; border: none; color: white; padding: 50px 50px; text-align: center;
+        text-decoration: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        font-size: 50px;">Click here to start the animation</button>
+
+    <script type="text/javascript">
+        "use strict"; // use strict javascript compiling
+
+        //--------------------------------------------------
+        // Global Cashes
+        //--------------------------------------------------
+        var MeshCache = {}; // here all mesh objects are stored, see GLUtils.createMesh() for details on how a mesh is added.
+        var TextureCache = {}; // here all texture objects are stored, see GLUtils.loadTexture() for details on how a texture is added.
+
+        // -----------------------------------------
+        // Global variables
+        // -----------------------------------------
+        var gl;
+        var canvas;
+        var renderLoop;
+
+        var g_camera;
+        var g_cameraController;
+
+        var timer = 0;
+
+        var road, street;
+        var pole;
+        var numBuildings = 50;
+        var cubeBuildings = new Array(numBuildings);
+        var cylBuildings = new Array(numBuildings);
+        var yellowLines = new Array(300);
+        var car, wheels;
+        var carX, carY, carZ, rot;
+        carX = 0.0;
+        carY = 0.0;
+        carZ = 0.0;
+        rot = 0;
+        var music;
+        var carInSpace = new carPhys(carX,carY,carZ, rot);
+        var x = 0;
+        var g_grid;
+
+        var gui_data = {mute: false};
+        var gui = new dat.GUI({ width: 100 } );
+        gui.add(gui_data, "mute").onChange(function(value){music?.mute(value);});
+
+        var g_renderer;
+        var g_lightRenderer;
+
+        // lighting
+        var g_lightingData = {
+            directionalLight: new V3(-0.2, -0.5, -0.5).normalize(), // light direction
+            directionalColor: new V3(1.0, 1.0, 1.0), // light color by default white
+            ambientColor: new V3(0.2, 0.2, 0.2), // dark gray
+            lightDirX: -1,
+            lightDirY: -1,
+            lightDirZ: -0.5,
+            lightColorR: 1.0,
+            lightColorG: 1.0,
+            lightColorB: 1.0
+        }
+
+        
+
+        // This will execute the setup function once the whole document has been loaded.
+        window.addEventListener("load",function(){
+           // setup();
+        });
+
+        function setup(){
+            canvas = document.getElementById("webgl-canvas");
+            gl = GLUtils.createWebGLInstance(canvas, true, false); // fullscreen = true, debugging = true, on = false or true
+            gl.clearColor(0.0, 0.0, 0.0, 1); // set clear color (RGBA)
+            gl.fitScreen();
+            gl.enable(gl.DEPTH_TEST);
+            gl.depthFunc(gl.LEQUAL);
+
+            // our shader files are loaded here. Once completed, init is called
+            // for now there is only the standardShader, but you can add more by
+            // simply adding another path into the array shaderPaths.
+            let shaderPaths = ["shaders/standardShader.glsl",
+                                "shaders/lightShader.glsl"];
+            GLUtils.loadShaders(shaderPaths, init);
+
+           
+        }
+
+        function init(){
+           
+
+            Input.initialize(canvas);
+
+            g_renderer = new Renderer("standardShader");
+            g_lightRenderer = new lightRenderer("lightShader");
+            
+            g_camera = new PerspectiveCamera(30, 0.1, 600, canvas.width / canvas.height);
+            g_cameraController = new OrbiterCameraController(canvas, g_camera, new V3(0,2,2), 10);
+            g_cameraController.target.set(0,0,0);
+
+            //TODO: load texture from ressources folder to TextureCache
+            //GLUtils.loadTexture("uv-test", "ressources/uv-test.png");
+            //TODO: add mainTexture property with loaded texture to material
+            //let uvTestMat = {tint: new V3(1,1,1), mainTexture: "uv-test"};
+            // Material with white tint color
+
+            music = new Howl({
+                src: ['ressources/song.mp3'],
+                html5: true // use streaming audio if possible
+            });
+            music.play();
+            music.mute(gui_data.mute);
+
+            //TEXTURE LOADING
+            GLUtils.loadTexture("carBody", "ressources/carBody.png");
+            GLUtils.loadTexture("wheelTex", "ressources/wheelTex.png");
+            GLUtils.loadTexture("road", "ressources/cliff.png");
+            GLUtils.loadTexture("atlas", "ressources/hmbuilding.png");
+            GLUtils.loadTexture("roundBuilding", "ressources/greenTile.png");
+            GLUtils.loadTexture("street", "ressources/foam.png");
+            
+          
+            //MATERIALS LOADING
+            let carBody = {tint: new V3(1,1,1), mainTexture: "carBody"};
+            let wheelTex = {tint: new V3(1,1,1), mainTexture: "wheelTex"};
+            let roadTex = {tint: new V3(1,1,1), mainTexture: "road"};
+            let building1Tex = {tint: new V3(1,1,1), mainTexture: "atlas"};
+            let building2Tex = {tint: new V3(1,1,1), mainTexture: "roundBuilding"};
+            let streetTex = {tint: new V3(1,1,1), mainTexture: "street"};
+            let poleTex = {tint: new V3(1.0,1.0,0.0), mainTexture: "street"};
+            let yellowLineTex = {tint: new V3(1.0,1.0,0.0), mainTexture: "roundBuilding"};
+
+
+            let carMesh = OBJLoader.getMesh("carMesh", "ressources/car.obj");
+            car = new ModelTransform(carMesh, carBody);
+            car.scale.set(0.5, 0.5, 0.5);
+            car.rotation.set(0.0, 0.0, 0.0);
+            car.position.set(carX, carY, carZ);
+
+            //copy the above 4 lines but replace all car with wheels
+            let wheelsMesh = OBJLoader.getMesh("wheelMesh", "ressources/wheels.obj");
+            wheels = new ModelTransform(wheelsMesh, wheelTex);
+            wheels.scale.set(0.5, 0.5, 0.5);
+            wheels.rotation.set(0, 0, 0);
+            wheels.position.set(carX, carY, carZ);
+
+            road = new ModelTransform(Primitives.Quad.getMesh(), roadTex);
+            road.scale.set(500, 500, 1);
+            road.rotation.set(-90, 0, 0);
+            road.position.set(0.0, -0.1, 0.0);
+
+            let building1Mesh = OBJLoader.getMesh("building1Mesh", "ressources/hmbuilding.obj");
+            for(let i=0; i<cubeBuildings.length; ++i){
+            cubeBuildings[i] = new ModelTransform(building1Mesh, building1Tex);
+            cubeBuildings[i].scale.set(0.1, 0.1, 0.1);
+            cubeBuildings[i].rotation.set(0, 60, 0);
+            cubeBuildings[i].position.set(-8.8, -0.11, 0.0);
+            }
+
+            for(let i=0; i<cylBuildings.length; ++i){
+            cylBuildings[i] = new ModelTransform(Primitives.Cylinder.getMesh(), building2Tex);
+            cylBuildings[i].scale.set(1.5, 1.8+(Math.random()*2*i), 1.3);
+            cylBuildings[i].rotation.set(0, 0, 0);
+            cylBuildings[i].position.set(-0.8, 1.1, 0.0);
+            }
+            street = new ModelTransform(Primitives.Quad.getMesh(), streetTex);
+            street.position.set(0.5-carX,-0.0916-carY, 0.0-carZ);
+            street.scale.set(1000.0, 3.0, 1.0);
+            street.rotation.set(-90.0, -90.0, 0.0);
+
+            // pole = new ModelTransform(Primitives.Cylinder.getMesh(), poleTex);
+            // pole.position.set(-0.8, 0.71, 0.0);
+            // pole.scale.set(0.05, 0.89, 0.05);
+            // pole.rotation.set(0, 0, 0);
+
+            
+            for(let i = 0; i < yellowLines.length; ++i){
+                yellowLines[i] = new ModelTransform(Primitives.Cube.getMesh(), yellowLineTex);
+                yellowLines[i].position.set(0.0, -0.1, 0.0);
+                yellowLines[i].scale.set(0.5, 0.05, 0.01);
+                yellowLines[i].rotation.set(-90.0, -90.0, 0.0);
+
+            }
+
+
+            //g_grid = new GridAxis();
+
+            renderLoop = new RenderLoop(draw).start();
+        }
+
+        function draw(deltaTime){
+            Input.update();
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            g_cameraController.update();
+
+            let bpm = 141/2;
+            let bps = bpm/60;
+            let beatDuration = 1.0/bps;
+
+            carInSpace.updateCarPos();
+            carInSpace.getKeys(deltaTime);
+
+            carX = carInSpace.getX();
+            carY = carInSpace.getY();
+            carZ = carInSpace.getZ();
+            rot = carInSpace.getRot();
+            car.position.set(0.0, 0.0, 0.0);
+            car.rotation.set(0.0, rot , 0.0);
+            wheels.position.set(0.0, 0.0, 0.0);
+            wheels.rotation.set(0.0, rot, 0.0);
+
+            timer += deltaTime;
+            if(timer > beatDuration){
+                timer = Time.time % beatDuration;
+                x+= .01;
+                car.position.set(0.0, Math.abs(Math.sin(x))/4.0 ,0.0);
+                let r = Math.random();
+                let g = Math.random();
+                let b = Math.random();
+                gl.clearColor(r, g, b, 1);
+            }
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            g_cameraController.update();
+
+            //Movements **SET POSITION OF OBJECTS HERE NOT IN INIT**
+            street.position.set(0.5-carX,-0.076-carY, -400.0-carZ);
+            for(let i=0; i<cubeBuildings.length; ++i){
+                cubeBuildings[i].position.set( 2*(i%2-0.5) * 2.8-carX+0.5, -0.11-carY, -2.0-carZ - (i*15.0));
+                cubeBuildings[i].rotation.set(0, -60 * 2*(i%2-0.5), 0);
+                cubeBuildings[i].update();
+            }
+
+            for(let i=0; i<cylBuildings.length; ++i){
+                cylBuildings[i].position.set( 2*(i%2-0.5) * 2.8-carX+0.5, 1.1-carY, -10.0-carZ - (i*15.0));
+                cylBuildings[i].update();
+            }
+
+
+            for(let i = 0;i < yellowLines.length; ++i){
+                yellowLines[i].position.set(0.4-carX, -0.05-carY, -0.5-carZ - (i*3.0));
+                yellowLines[i].update();
+            }
+
+            car.update();
+            wheels.update();
+            road.update();
+            street.update();
+            //pole.update();
+
+            // let lightingData = {};
+            // let shaderData = {};
+            // lightingData.lightDirection = new V3(g_lightingData.lightDirX,
+            //                                      g_lightingData.lightDirY,
+            //                                      g_lightingData.lightDirZ);
+            // lightingData.lightColor = new V3(g_lightingData.lightColorR,
+            //                                      g_lightingData.lightColorG,
+            //                                      g_lightingData.lightColorB);
+            //shaderData.lightingData = lightingData; // attach lighting data to shader data.
+
+            let shaderData = { lightingData: g_lightingData};
+            let renderer = g_lightRenderer;
+
+            renderer.drawModel(car, g_camera, shaderData);
+            renderer.drawModel(wheels, g_camera, shaderData);
+            renderer.drawModel(road, g_camera, shaderData);
+            renderer.drawModel(street, g_camera, shaderData);
+            //renderer.drawModel(pole, g_camera, shaderData);
+
+            for(let i = 0; i < cubeBuildings.length; ++i){
+                renderer.drawModel(cubeBuildings[i], g_camera, shaderData);
+                renderer.drawModel(cylBuildings[i], g_camera, shaderData);
+
+            }
+
+            for(let i = 0 ;i < yellowLines.length; ++i){
+                renderer.drawModel(yellowLines[i], g_camera, shaderData);
+            }
+            
+            //g_grid.draw(g_camera);
+
+        }
+
+        function load(){
+            var button = document.getElementById("startbutton");
+            button.remove();
+            setup();
+        }
+    </script>
+</body>
+</html>

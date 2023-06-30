@@ -1,0 +1,13 @@
+# Blender MTL File: 'Sketchfab_2023_03_29_19_41_35.blend'
+# Material Count: 1
+
+newmtl Shop_B_04
+Ns 199.999995
+Ka 1.000000 1.000000 1.000000
+Kd 0.588000 0.588000 0.588000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd C:\\XRintelligence Dropbox\\Jean-Bastien Voisin\\EIT Urban Mobility - Academy call 2023-2025\\4_Assets\\03_Environement\\Buildings\\FBX\\Shop_B_04_extracted_textures\\Shop_B_04.fbm\\Shop_B_04.bmp
