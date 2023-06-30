@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>WebGL Texturing</title>
+</head>
+<body>
+	<canvas width="500" height="500" id="webgl-canvas"></canvas>
+
+    <script src="../common/webgl-debug.js"></script>
+    <script src="../common/webgl-lint.js"></script>
+    <script src="../common/math.js"></script>
+    <script src="../common/gl-utils.js"></script>
+    <script src="../common/input.js"></script>
+    <script src="../common/renderloop.js"></script>
+    <script src="../common/camera.js"></script>
+    <script src="../common/grid.js"></script>
+    <script src="../common/dat.gui.min.js"></script>
+    <script src="../common/stats.min.js"></script>
+
+    <script src="renderer.js"></script>
+    <script src="modeltransform.js"></script>
+    <script src="primitives.js"></script>
+    <script src="../common/objparser.js"></script>
+
+    <script type="text/javascript">
+        "use strict"; // use strict javascript compiling
+
+        //--------------------------------------------------
+        // Global Cashes
+        //--------------------------------------------------
+        var MeshCache = {}; // here all mesh objects are stored, see GLUtils.createMesh() for details on how a mesh is added.
+        var TextureCache = {}; // here all texture objects are stored, see GLUtils.loadTexture() for details on how a texture is added.
+
+        // -----------------------------------------
+        // Global variables
+        // -----------------------------------------
+        var gl;
+        var canvas;
+        var renderLoop;
+
+        var g_camera;
+        var g_cameraController;
+
+        var sphere, pyramid, cube;
+        var bed, floor;
+        var topLLeg, topRLeg, bottomLLeg, bottomRLeg;
+        var dog;
+        var g_grid;
+
+        var g_renderer;
+
+        // lighting
+        var g_lightingData = {
+            directionalLight: new V3(-0.2, -0.5, -0.5).normalize(), // light direction
+            directionalColor: new V3(1.0, 1.0, 1.0), // light color by default white
+            ambientColor: new V3(0.2, 0.2, 0.2) // dark gray
+        }
+
+        // This will execute the setup function once the whole document has been loaded.
+        window.addEventListener("load",function(){
+            setup();
+        });
+
+        function setup(){
+            canvas = document.getElementById("webgl-canvas");
+            gl = GLUtils.createWebGLInstance(canvas, true, true); // fullscreen = true, debugging = true
+            gl.clearColor(0.85, 0.95, 0.9, 1); // set clear color (RGBA)
+            gl.fitScreen();
+            gl.enable(gl.DEPTH_TEST);
+            gl.depthFunc(gl.LEQUAL);
+
+            // our shader files are loaded here. Once completed, init is called
+            // for now there is only the standardShader, but you can add more by
+            // simply adding another path into the array shaderPaths.
+            let shaderPaths = ["shaders/standardShader.glsl"];
+            GLUtils.loadShaders(shaderPaths, init);
+        }
+
+        function init(){
+            Input.initialize(canvas);
+
+            g_renderer = new Renderer("standardShader");
+
+            g_camera = new PerspectiveCamera(90, 0.2, 1000, canvas.width / canvas.height);
+            g_cameraController = new OrbiterCameraController(canvas, g_camera,new V3(0,2,0), 10 );
+            g_cameraController.target.set(0,0, 8);
+
+            //TODO: load texture from ressources folder to TextureCache
+            GLUtils.loadTexture("uv-test", "ressources/uv-test.png");
+            GLUtils.loadTexture("foam", "ressources/foam.png");
+            GLUtils.loadTexture("greenTile", "ressources/greenTile.png");
+            GLUtils.loadTexture("rope", "ressources/Rope.png");
+            GLUtils.loadTexture("plastic", "ressources/Plastic.png");
+            //TODO: add mainTexture property with loaded texture to material
+
+            // Material with white tint color
+            let uvTestMat = {tint: new V3(1,1,1), mainTexture: "uv-test"};
+            let foam = {tint: new V3(1,1,1), mainTexture: "foam"};
+            let greenTile = {tint: new V3(1,1,1), mainTexture: "greenTile"};
+            let rope = {tint: new V3(1,1,1), mainTexture: "rope"};
+            let plastic = {tint: new V3(1,1,1), mainTexture: "plastic"};
+
+            // sphere = new ModelTransform(Primitives.Sphere.getMesh(), uvTestMat);
+             pyramid = new ModelTransform(Primitives.Pyramid.getMesh(), greenTile);
+            // cube = new ModelTransform(Primitives.Cube.getMesh(), uvTestMat);
+            floor = new ModelTransform(Primitives.Quad.getMesh(), greenTile);
+            topLLeg = new ModelTransform(Primitives.Cylinder.getMesh(), foam);
+            topRLeg = new ModelTransform(Primitives.Cylinder.getMesh(), foam);
+            bottomLLeg = new ModelTransform(Primitives.Cylinder.getMesh(), foam);
+            bottomRLeg = new ModelTransform(Primitives.Cylinder.getMesh(), foam);
+            bed = new ModelTransform(Primitives.Cube.getMesh(), foam);
+
+            let dogMesh = OBJLoader.getMesh("dogMesh", "ressources/dog.obj");
+            dog = new ModelTransform(dogMesh, rope);
+            dog.scale.set(.008,.008,0.008);
+            dog.rotation.set(0.0,0.0,0.0);
+            dog.position.set(3.0,1.35,2.0);
+        
+            pyramid.scale.set(2.7, 2.5, 0.5);
+            pyramid.rotation.set(0.0, 0.0, 0.0);
+            pyramid.position.set(3.0, 0.6, 4.5);
+
+            floor.scale.set(10, 10, 1);
+            floor.rotation.set(-90, 0, 0);
+            floor.position.set(0.0, -0.01, 0.0);
+
+            topLLeg.position.set(4.5,0.2, 4.5);
+            topLLeg.scale.set(0.4,0.2,0.4);
+
+            topRLeg.position.set(1.5,0.2, 4.5);
+            topRLeg.scale.set(0.4,0.2,0.4);
+
+            bottomLLeg.position.set(4.5,0.2, -1.5);
+            bottomLLeg.scale.set(0.4,0.2,0.4);
+
+            bottomRLeg.position.set(1.5,0.2, -1.5);
+            bottomRLeg.scale.set(0.4,0.2,0.4);
+
+            bed.scale.set(3.3, 6.4, 0.25);
+            bed.rotation.set(-90, 0, 0);
+            bed.position.set(3, 0.52, 1.5);
+
+
+            g_grid = new GridAxis();
+
+            renderLoop = new RenderLoop(draw).start();
+        }
+
+        function draw(deltaTime){
+            Input.update();
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            g_cameraController.update();
+
+            // sphere.update();
+            // cylinder.update();
+             pyramid.update();
+            // cube.update();
+            dog.update();
+            floor.update();
+            topLLeg.update();
+            topRLeg.update();
+            bottomLLeg.update();
+            bottomRLeg.update();
+            bed.update();
+
+            let shaderData = { lightingData: g_lightingData};
+
+            // g_renderer.drawModel(sphere, g_camera, shaderData);
+            // g_renderer.drawModel(cylinder, g_camera, shaderData);
+            // g_renderer.drawModel(pyramid, g_camera, shaderData);
+            // g_renderer.drawModel(cube, g_camera, shaderData);
+            g_renderer.drawModel(floor, g_camera, shaderData);
+            g_renderer.drawModel(topLLeg, g_camera, shaderData);
+            g_renderer.drawModel(topRLeg, g_camera, shaderData);
+            g_renderer.drawModel(bottomLLeg, g_camera, shaderData);
+            g_renderer.drawModel(bottomRLeg, g_camera, shaderData);
+            g_renderer.drawModel(bed, g_camera, shaderData);
+            g_renderer.drawModel(dog, g_camera, shaderData);
+            g_renderer.drawModel(pyramid, g_camera, shaderData);
+
+            g_grid.draw(g_camera);
+
+
+        
+
+        }
+        
+    </script>
+</body>
+</html>
