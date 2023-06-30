@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Lab 4 Exercise 1 Triangle</title>
+    <script type="vertex-shader" id="vertexcolor-vertexShader">
+        attribute vec2 a_position;
+
+        // TODO: Add color attribute
+        attribute vec3 a_color;
+
+        // TODO: Add color varying
+        varying vec3 v_color; 
+
+        // TODO: Add offset uniform
+        uniform vec2 u_offset;
+
+        void main() {
+            // TODO: set color varying
+            v_color = a_color;
+            // TODO: apply offset to final vertex position
+            vec2 finalPosition = a_position + u_offset;
+            gl_Position = vec4(finalPosition, 0, 1);
+        }
+    </script>
+    <script type="fragment-shader" id="vertexcolor-fragmentShader">
+        precision highp float; //float precision settings
+
+        // TODO: Add color varying
+        varying vec3 v_color;
+        void main()
+        {
+            // TODO: use color varying for final fragment color
+            gl_FragColor = vec4(v_color, 1); // rbga -> [1,0,0,1] = red
+        }
+    </script>
+</head>
+<body>
+	<canvas width="500" height="500" id="webgl-canvas"></canvas>
+
+    <script src="../common/gl-utils.js"></script>
+    <script src="../common/webgl-debug.js"></script> <!--This adds the webgl debug library-->
+    <script src="../common/webgl-lint.js"></script> <!--This adds the webgl lint library-->
+    <script src="triangle.js"></script>
+
+    <script type="text/javascript">
+        "use strict"; // use strict javascript compiling
+
+        // -----------------------------------------
+        // Global variables
+        // -----------------------------------------
+        var gl;
+        var canvas;
+        var g_vertexcolor_shaderProgram;
+        var g_triangle1;
+        // TODO: Add global variable for second triangle object
+        var g_triangle2;
+
+        function setup(){
+            canvas = document.getElementById("webgl-canvas");
+            gl = canvas.getContext("webgl2"); // WebGLRenderingContext
+            // post error if not supported
+            if(!gl){ console.error("WebGL context is not available."); }
+
+            gl = WebGLDebugUtils.makeDebugContext(gl); // enable debugging
+
+            gl.clearColor(0.85, 0.95, 0.9, 1); // set clear color (RGBA)
+            gl.clear(gl.COLOR_BUFFER_BIT); // clear color buffers
+        }
+
+        /**
+        * Initialize shader program and create geometry and buffers.
+        */
+        function init(){
+            let vertexcolor_vertexShaderSource = GLUtils.getDomShaderSrc("vertexcolor-vertexShader");
+            let vertexcolor_fragmentShaderSource = GLUtils.getDomShaderSrc("vertexcolor-fragmentShader");
+            g_vertexcolor_shaderProgram = GLUtils.createShaderProgram(vertexcolor_vertexShaderSource,
+                                        vertexcolor_fragmentShaderSource);
+
+            g_triangle1 = new Triangle(-0.5,0.25);
+
+            // TODO: create second triangle object
+            g_triangle2 = new Triangle(0.5, -0.25);
+        }
+
+        /**
+        * Call all draw functions.
+        */
+        function draw(){
+            drawTriangle(g_vertexcolor_shaderProgram, g_triangle1);
+
+            // TODO: draw second triangle object
+            drawTriangle(g_vertexcolor_shaderProgram, g_triangle2);
+        }
+
+        function drawTriangle(shaderProgram, triangle){
+
+            // TODO: set currently active shader program (use shaderProgram)
+            gl.useProgram(shaderProgram);
+
+            // TODO: Connect position buffer to a_position attribute in vertex shader
+            // 1. Bind position buffer
+            // 2. Get position attribute location
+            // 3. Enable position vertex attribute array
+            // 4. Set position vertex attribute pointer
+            gl.bindBuffer(gl.ARRAY_BUFFER, triangle.positionBuffer);
+            let positionLocation = gl.getAttribLocation(shaderProgram, "a_position");
+            gl.enableVertexAttribArray(positionLocation);
+            let vertexSize = 2;
+            gl.vertexAttribPointer(positionLocation, vertexSize, gl.FLOAT, false, 0, 0);
+
+
+            // TODO: Repeat for color buffer and a_color attribute in vertex shader
+            gl.bindBuffer(gl.ARRAY_BUFFER, triangle.colorBuffer);
+            let colorLocation = gl.getAttribLocation(shaderProgram, "a_color");
+            gl.enableVertexAttribArray(colorLocation);
+            let vertexSizeColor = 3;
+            gl.vertexAttribPointer(colorLocation, vertexSizeColor, gl.FLOAT, false, 0, 0);
+
+            // TODO: get u_offset uniform location
+            // TODO: Set u_offset uniform
+            let offsetLocation = gl.getUniformLocation(shaderProgram, "u_offset");
+            gl.uniform2f(offsetLocation, triangle.offsetX, triangle.offsetY);
+
+            // draw geometry
+            gl.drawArrays(gl.TRIANGLES, 0, triangle.vertexCount);
+        }
+
+        // actually execute the functions to run the program
+
+            //gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
+        setup();
+        init();
+        draw();
+    </script>
+</body>
+</html>
